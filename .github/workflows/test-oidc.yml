@@ -1,0 +1,36 @@
+name: Test OIDC Authentication
+
+on:
+  workflow_dispatch: # Manual trigger for testing
+
+jobs:
+  test-oidc:
+    name: Test OIDC Connection
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Debug Information
+      run: |
+        echo "Repository: ${{ github.repository }}"
+        echo "AWS Account ID exists: ${{ secrets.AWS_ACCOUNT_ID != '' }}"
+        echo "AWS Region: ${{ vars.AWS_REGION || 'us-east-1' }}"
+        echo "Role ARN: arn:aws:iam::${{ secrets.AWS_ACCOUNT_ID }}:role/thrive-github-actions"
+    
+    - name: Configure AWS credentials using OIDC
+      uses: aws-actions/configure-aws-credentials@v4
+      with:
+        role-to-assume: arn:aws:iam::${{ secrets.AWS_ACCOUNT_ID }}:role/thrive-github-actions
+        aws-region: us-east-1
+        role-session-name: GitHubActions-Test-${{ github.run_id }}
+    
+    - name: Test AWS Access
+      run: |
+        echo "Testing AWS CLI access..."
+        aws sts get-caller-identity
+        aws ecr describe-repositories --max-items 1 || echo "ECR access test completed"
